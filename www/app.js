@@ -2308,3 +2308,20 @@ window.addEventListener("afterprint", () => {
         renderTableKhusus();
     }
 });
+
+// --- FUNGSI CETAK LAPORAN UNTUK CORDOVA ---
+function cetakLaporan() {
+    // Cek apakah sedang di Cordova
+    if (window.cordova && cordova.plugins && cordova.plugins.printer) {
+        // Cetak seluruh halaman (paling cocok untuk laporan kamu)
+        cordova.plugins.printer.print(null, {
+            name: 'Laporan Keuangan DKM',
+            duplex: false
+        }, function () {
+            console.log('Print selesai / dibatalkan');
+        });
+    } else {
+        // Fallback kalau dibuka di browser biasa
+        window.print();
+    }
+}
