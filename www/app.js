@@ -2309,19 +2309,36 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN UNTUK CORDOVA ---
+// --- FUNGSI CETAK LAPORAN (PDF) ---
 function cetakLaporan() {
-    // Cek apakah sedang di Cordova
-    if (window.cordova && cordova.plugins && cordova.plugins.printer) {
-        // Cetak seluruh halaman (paling cocok untuk laporan kamu)
-        cordova.plugins.printer.print(null, {
-            name: 'Laporan Keuangan DKM',
-            duplex: false
-        }, function () {
-            console.log('Print selesai / dibatalkan');
-        });
-    } else {
-        // Fallback kalau dibuka di browser biasa
-        window.print();
-    }
+    // Tampilkan loading sederhana
+    showAlert("Sedang membuat PDF...", "info");
+
+    // Ambil elemen yang mau dicetak (seluruh body atau container utama)
+    const element = document.querySelector('.print-container') || document.body;
+
+    // Opsi PDF
+    const opt = {
+        margin:       [10, 10, 10, 10], // atas, kiri, bawah, kanan (mm)
+        filename:     'Laporan_Keuangan_DKM.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2,
+            useCORS: true,
+            logging: false
+        },
+        jsPDF:        { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait' 
+        }
+    };
+
+    // Generate & download PDF
+    html2pdf().set(opt).from(element).save().then(() => {
+        showAlert("PDF berhasil dibuat!", "success");
+    }).catch((err) => {
+        console.error(err);
+        showAlert("Gagal membuat PDF", "error");
+    });
 }
