@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN (jsPDF MURNI - LEBIH STABIL) ---
+// --- FUNGSI CETAK LAPORAN (jsPDF + LANGSUNG BUKA) ---
 function cetakLaporan() {
     try {
         showAlert("Sedang membuat PDF...", "info");
@@ -2317,7 +2317,6 @@ function cetakLaporan() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
 
-        // Data yang akan dicetak
         const activeList = currentKasTab === "utama" 
             ? filteredTransactionsGlobalUtama 
             : filteredTransactionsGlobalKhusus;
@@ -2341,7 +2340,6 @@ function cetakLaporan() {
         });
         doc.text(`Dicetak: ${today}`, 105, 28, { align: "center" });
 
-        // Garis
         doc.setLineWidth(0.5);
         doc.line(15, 32, 195, 32);
 
@@ -2359,10 +2357,10 @@ function cetakLaporan() {
         doc.line(15, y + 2, 195, y + 2);
         y += 8;
 
-        // Isi Tabel
+        // Isi data
         doc.setFont("helvetica", "normal");
         activeList.forEach((tx, idx) => {
-            if (y > 270) { // Ganti halaman
+            if (y > 270) {
                 doc.addPage();
                 y = 20;
             }
@@ -2375,17 +2373,27 @@ function cetakLaporan() {
 
             doc.text(String(idx + 1), 15, y);
             doc.text(tgl, 25, y);
-            doc.text(tx.category.substring(0, 18), 50, y);
-            doc.text(tx.desc.substring(0, 28), 90, y);
+            doc.text((tx.category || "").substring(0, 18), 50, y);
+            doc.text((tx.desc || "").substring(0, 28), 90, y);
             doc.text(tipe, 150, y);
             doc.text(nominal, 170, y);
 
             y += 7;
         });
 
-        // Simpan PDF
-        doc.save("Laporan_Keuangan_DKM.pdf");
-        showAlert("PDF berhasil dibuat!", "success");
+        // === BAGIAN PENTING: Buka PDF langsung ===
+        const pdfData = doc.output('datauristring');
+        
+        // Coba buka di tab baru / aplikasi PDF
+        const newWindow = window.open(pdfData, '_blank');
+        
+        if (!newWindow) {
+            // Fallback kalau diblokir
+            doc.save("Laporan_Keuangan_DKM.pdf");
+            showAlert("PDF dibuat. Cek folder Download.", "success");
+        } else {
+            showAlert("PDF berhasil dibuka!", "success");
+        }
 
     } catch (err) {
         console.error(err);
