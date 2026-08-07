@@ -10,4 +10,7 @@
     <content src="index.html" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+
+<plugin name="cordova-plugin-printer" spec="https://github.com/katzer/cordova-plugin-printer.git" />
+
 </widget>
