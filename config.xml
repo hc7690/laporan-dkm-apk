@@ -2,7 +2,7 @@
 <widget id="com.dkm.laporan" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>Laporan DKM</name>
     <description>
-        A sample Apache Cordova application that responds to the deviceready event.
+        Sistem Laporan Keuangan DKM Masjid
     </description>
     <author email="dev@cordova.apache.org" href="https://cordova.apache.org">
         Apache Cordova Team
@@ -10,7 +10,10 @@
     <content src="index.html" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
-
-<plugin name="cordova-plugin-printer" spec="https://github.com/katzer/cordova-plugin-printer.git" />
-
+    
+    <!-- Plugin untuk mengatasi masalah AndroidX -->
+    <plugin name="cordova-plugin-androidx-adapter" spec="^1.1.3" />
+    
+    <!-- Plugin Printer -->
+    <plugin name="cordova-plugin-printer" spec="https://github.com/katzer/cordova-plugin-printer.git" />
 </widget>
