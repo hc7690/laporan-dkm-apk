@@ -2309,47 +2309,86 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN (PDF) - VERSI LEBIH STABIL ---
+// --- FUNGSI CETAK LAPORAN (jsPDF MURNI - LEBIH STABIL) ---
 function cetakLaporan() {
-    showAlert("Sedang membuat PDF...", "info");
+    try {
+        showAlert("Sedang membuat PDF...", "info");
 
-    // Sembunyikan elemen yang berat / sering bikin error
-    const charts = document.querySelectorAll('canvas');
-    charts.forEach(c => c.style.display = 'none');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
 
-    const noPrint = document.querySelectorAll('.no-print');
-    noPrint.forEach(el => el.style.display = 'none');
+        // Data yang akan dicetak
+        const activeList = currentKasTab === "utama" 
+            ? filteredTransactionsGlobalUtama 
+            : filteredTransactionsGlobalKhusus;
 
-    // Ambil elemen yang mau dicetak
-    const element = document.querySelector('.print-container') || document.body;
+        const title = currentKasTab === "utama" 
+            ? "LAPORAN KEUANGAN KAS UTAMA" 
+            : `LAPORAN KAS KHUSUS: ${activeKhususCategory || ""}`;
 
-    const opt = {
-        margin: 10,
-        filename: 'Laporan_Keuangan_DKM.pdf',
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: {
-            scale: 1.5,               // turunkan scale biar lebih ringan
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            scrollY: 0,
-            windowWidth: document.body.scrollWidth
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+        // Header
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(settings.masjidName || "Masjid", 105, 15, { align: "center" });
 
-    html2pdf().set(opt).from(element).save()
-        .then(() => {
-            // Kembalikan elemen yang disembunyikan
-            charts.forEach(c => c.style.display = '');
-            noPrint.forEach(el => el.style.display = '');
-            showAlert("PDF berhasil dibuat!", "success");
-        })
-        .catch((err) => {
-            console.error(err);
-            // Kembalikan elemen walau gagal
-            charts.forEach(c => c.style.display = '');
-            noPrint.forEach(el => el.style.display = '');
-            showAlert("Gagal membuat PDF. Coba lagi.", "error");
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(title, 105, 22, { align: "center" });
+
+        doc.setFontSize(9);
+        const today = new Date().toLocaleDateString('id-ID', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         });
+        doc.text(`Dicetak: ${today}`, 105, 28, { align: "center" });
+
+        // Garis
+        doc.setLineWidth(0.5);
+        doc.line(15, 32, 195, 32);
+
+        // Header Tabel
+        let y = 40;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.text("No", 15, y);
+        doc.text("Tanggal", 25, y);
+        doc.text("Kategori", 50, y);
+        doc.text("Keterangan", 90, y);
+        doc.text("Tipe", 150, y);
+        doc.text("Nominal", 170, y);
+
+        doc.line(15, y + 2, 195, y + 2);
+        y += 8;
+
+        // Isi Tabel
+        doc.setFont("helvetica", "normal");
+        activeList.forEach((tx, idx) => {
+            if (y > 270) { // Ganti halaman
+                doc.addPage();
+                y = 20;
+            }
+
+            const tgl = new Date(tx.date).toLocaleDateString('id-ID', { 
+                day: '2-digit', month: 'short', year: 'numeric' 
+            });
+            const tipe = tx.type === "pemasukan" ? "Masuk" : "Keluar";
+            const nominal = (tx.type === "pemasukan" ? "+" : "-") + " " + formatRupiah(tx.amount);
+
+            doc.text(String(idx + 1), 15, y);
+            doc.text(tgl, 25, y);
+            doc.text(tx.category.substring(0, 18), 50, y);
+            doc.text(tx.desc.substring(0, 28), 90, y);
+            doc.text(tipe, 150, y);
+            doc.text(nominal, 170, y);
+
+            y += 7;
+        });
+
+        // Simpan PDF
+        doc.save("Laporan_Keuangan_DKM.pdf");
+        showAlert("PDF berhasil dibuat!", "success");
+
+    } catch (err) {
+        console.error(err);
+        showAlert("Gagal membuat PDF", "error");
+    }
 }
