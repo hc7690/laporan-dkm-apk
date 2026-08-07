@@ -2309,36 +2309,47 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN (PDF) ---
+// --- FUNGSI CETAK LAPORAN (PDF) - VERSI LEBIH STABIL ---
 function cetakLaporan() {
-    // Tampilkan loading sederhana
     showAlert("Sedang membuat PDF...", "info");
 
-    // Ambil elemen yang mau dicetak (seluruh body atau container utama)
+    // Sembunyikan elemen yang berat / sering bikin error
+    const charts = document.querySelectorAll('canvas');
+    charts.forEach(c => c.style.display = 'none');
+
+    const noPrint = document.querySelectorAll('.no-print');
+    noPrint.forEach(el => el.style.display = 'none');
+
+    // Ambil elemen yang mau dicetak
     const element = document.querySelector('.print-container') || document.body;
 
-    // Opsi PDF
     const opt = {
-        margin:       [10, 10, 10, 10], // atas, kiri, bawah, kanan (mm)
-        filename:     'Laporan_Keuangan_DKM.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2,
+        margin: 10,
+        filename: 'Laporan_Keuangan_DKM.pdf',
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: {
+            scale: 1.5,               // turunkan scale biar lebih ringan
             useCORS: true,
-            logging: false
+            allowTaint: true,
+            logging: false,
+            scrollY: 0,
+            windowWidth: document.body.scrollWidth
         },
-        jsPDF:        { 
-            unit: 'mm', 
-            format: 'a4', 
-            orientation: 'portrait' 
-        }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Generate & download PDF
-    html2pdf().set(opt).from(element).save().then(() => {
-        showAlert("PDF berhasil dibuat!", "success");
-    }).catch((err) => {
-        console.error(err);
-        showAlert("Gagal membuat PDF", "error");
-    });
+    html2pdf().set(opt).from(element).save()
+        .then(() => {
+            // Kembalikan elemen yang disembunyikan
+            charts.forEach(c => c.style.display = '');
+            noPrint.forEach(el => el.style.display = '');
+            showAlert("PDF berhasil dibuat!", "success");
+        })
+        .catch((err) => {
+            console.error(err);
+            // Kembalikan elemen walau gagal
+            charts.forEach(c => c.style.display = '');
+            noPrint.forEach(el => el.style.display = '');
+            showAlert("Gagal membuat PDF. Coba lagi.", "error");
+        });
 }
