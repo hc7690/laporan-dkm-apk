@@ -2309,9 +2309,15 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN (DENGAN FILE OPENER) ---
+// --- FUNGSI CETAK LAPORAN (VERSI AMAN) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
+
+    // Cek apakah jsPDF sudah load
+    if (!window.jspdf) {
+        showAlert("Library PDF belum siap. Coba refresh aplikasi.", "error");
+        return;
+    }
 
     try {
         const { jsPDF } = window.jspdf;
@@ -2377,40 +2383,21 @@ function cetakLaporan() {
             y += 7;
         });
 
-        // === Simpan & Buka PDF pakai plugin ===
-        const pdfOutput = doc.output('blob');
-        const fileName = "Laporan_Keuangan_DKM.pdf";
+        // === Coba buka dengan cara paling sederhana ===
+        const pdfBase64 = doc.output('datauristring');
 
-        // Tulis file ke storage
-        window.resolveLocalFileSystemURL(cordova.file.externalDataDirectory || cordova.file.dataDirectory, function(dir) {
-            dir.getFile(fileName, { create: true }, function(fileEntry) {
-                fileEntry.createWriter(function(fileWriter) {
-                    fileWriter.onwriteend = function() {
-                        // Setelah selesai ditulis, buka PDF-nya
-                        cordova.plugins.fileOpener2.open(
-                            fileEntry.nativeURL,
-                            'application/pdf',
-                            {
-                                error: function(e) {
-                                    console.error(e);
-                                    showAlert("PDF tersimpan, tapi gagal dibuka", "warning");
-                                },
-                                success: function() {
-                                    showAlert("PDF berhasil dibuka!", "success");
-                                }
-                            }
-                        );
-                    };
-                    fileWriter.write(pdfOutput);
-                });
-            });
-        }, function(err) {
-            console.error(err);
-            showAlert("Gagal menyimpan PDF", "error");
-        });
+        // Coba buka di browser internal
+        if (window.cordova && window.cordova.InAppBrowser) {
+            cordova.InAppBrowser.open(pdfBase64, '_system', 'location=yes');
+            showAlert("PDF dibuka!", "success");
+        } else {
+            // Fallback
+            window.open(pdfBase64, '_blank');
+            showAlert("PDF dibuat (cek apakah terbuka)", "success");
+        }
 
     } catch (err) {
-        console.error(err);
-        showAlert("Gagal membuat PDF", "error");
+        console.error("Error detail:", err);
+        showAlert("Gagal: " + (err.message || "Unknown error"), "error");
     }
 }
