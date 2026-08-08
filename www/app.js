@@ -2292,7 +2292,6 @@ window.addEventListener("beforeprint", () => {
             <td class="text-gray-600 border border-gray-300 p-2">${formattedDate}</td>
             <td class="border border-gray-300 p-2"><span class="font-bold text-gray-700 text-xs">${tx.category}</span></td>
             <td class="text-slate-800 border border-gray-300 p-2">${tx.desc}</td>
-            <td class="text-center border border-gray-300 p-2">
                 <span class="text-[11px] font-bold uppercase ${isIncome ? 'text-green-600' : 'text-red-600'}">${typeLabel}</span>
             </td>
             <td class="text-right ${rowAmountClass} border border-gray-300 p-2">${amountPrefix} ${formattedAmt}</td>
@@ -2309,7 +2308,8 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN (STABIL) ---
+
+// --- FUNGSI CETAK LAPORAN (AMAN) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2318,6 +2318,24 @@ function cetakLaporan() {
         return;
     }
 
+    // Cek apakah sedang di dalam Cordova
+    if (!window.cordova) {
+        showAlert("Fitur ini hanya jalan di APK", "error");
+        return;
+    }
+
+    // Tunggu Cordova siap
+    document.addEventListener('deviceready', function() {
+        buatDanBukaPDF();
+    }, false);
+
+    // Kalau sudah ready, langsung jalan
+    if (window.cordova && cordova.file) {
+        buatDanBukaPDF();
+    }
+}
+
+function buatDanBukaPDF() {
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
@@ -2382,16 +2400,14 @@ function cetakLaporan() {
             y += 7;
         });
 
-        // === Simpan & Buka PDF ===
+        // Simpan & Buka
         const pdfOutput = doc.output('blob');
         const fileName = "Laporan_Keuangan_DKM.pdf";
 
-        // Tulis ke folder cache aplikasi (paling aman)
         window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, function(dirEntry) {
             dirEntry.getFile(fileName, { create: true, exclusive: false }, function(fileEntry) {
                 fileEntry.createWriter(function(fileWriter) {
                     fileWriter.onwriteend = function() {
-                        // Setelah selesai ditulis → buka
                         cordova.plugins.fileOpener2.open(
                             fileEntry.nativeURL,
                             'application/pdf',
@@ -2407,21 +2423,13 @@ function cetakLaporan() {
                         );
                     };
                     fileWriter.onerror = function(e) {
-                        console.error("Write error:", e);
-                        showAlert("Gagal menulis file PDF", "error");
+                        showAlert("Gagal menulis file", "error");
                     };
                     fileWriter.write(pdfOutput);
-                }, function(err) {
-                    console.error(err);
-                    showAlert("Gagal create writer", "error");
                 });
-            }, function(err) {
-                console.error(err);
-                showAlert("Gagal create file", "error");
             });
         }, function(err) {
-            console.error(err);
-            showAlert("Gagal akses folder", "error");
+            showAlert("Gagal akses folder: " + err, "error");
         });
 
     } catch (err) {
@@ -2429,3 +2437,4 @@ function cetakLaporan() {
         showAlert("Gagal: " + (err.message || "Unknown"), "error");
     }
 }
+
