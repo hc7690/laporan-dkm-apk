@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (AMAN) ---
+// --- FUNGSI CETAK LAPORAN (FULL) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2318,21 +2318,22 @@ function cetakLaporan() {
         return;
     }
 
-    // Cek apakah sedang di dalam Cordova
-    if (!window.cordova) {
-        showAlert("Fitur ini hanya jalan di APK", "error");
+    // Jika Cordova belum ready, tunggu
+    if (typeof cordova === 'undefined') {
+        document.addEventListener('deviceready', function() {
+            buatDanBukaPDF();
+        }, false);
+
+        setTimeout(function() {
+            if (typeof cordova === 'undefined') {
+                showAlert("Cordova belum siap. Tutup & buka ulang aplikasi.", "error");
+            }
+        }, 2500);
         return;
     }
 
-    // Tunggu Cordova siap
-    document.addEventListener('deviceready', function() {
-        buatDanBukaPDF();
-    }, false);
-
-    // Kalau sudah ready, langsung jalan
-    if (window.cordova && cordova.file) {
-        buatDanBukaPDF();
-    }
+    // Sudah siap
+    buatDanBukaPDF();
 }
 
 function buatDanBukaPDF() {
@@ -2400,7 +2401,7 @@ function buatDanBukaPDF() {
             y += 7;
         });
 
-        // Simpan & Buka
+        // Simpan & Buka PDF
         const pdfOutput = doc.output('blob');
         const fileName = "Laporan_Keuangan_DKM.pdf";
 
@@ -2423,13 +2424,13 @@ function buatDanBukaPDF() {
                         );
                     };
                     fileWriter.onerror = function(e) {
-                        showAlert("Gagal menulis file", "error");
+                        showAlert("Gagal menulis file PDF", "error");
                     };
                     fileWriter.write(pdfOutput);
                 });
             });
         }, function(err) {
-            showAlert("Gagal akses folder: " + err, "error");
+            showAlert("Gagal akses folder cache", "error");
         });
 
     } catch (err) {
