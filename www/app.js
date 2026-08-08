@@ -2309,13 +2309,12 @@ window.addEventListener("afterprint", () => {
     }
 });
 
-// --- FUNGSI CETAK LAPORAN (VERSI AMAN) ---
+// --- FUNGSI CETAK LAPORAN (STABIL) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
-    // Cek apakah jsPDF sudah load
     if (!window.jspdf) {
-        showAlert("Library PDF belum siap. Coba refresh aplikasi.", "error");
+        showAlert("Library PDF belum siap", "error");
         return;
     }
 
@@ -2383,21 +2382,50 @@ function cetakLaporan() {
             y += 7;
         });
 
-        // === Coba buka dengan cara paling sederhana ===
-        const pdfBase64 = doc.output('datauristring');
+        // === Simpan & Buka PDF ===
+        const pdfOutput = doc.output('blob');
+        const fileName = "Laporan_Keuangan_DKM.pdf";
 
-        // Coba buka di browser internal
-        if (window.cordova && window.cordova.InAppBrowser) {
-            cordova.InAppBrowser.open(pdfBase64, '_system', 'location=yes');
-            showAlert("PDF dibuka!", "success");
-        } else {
-            // Fallback
-            window.open(pdfBase64, '_blank');
-            showAlert("PDF dibuat (cek apakah terbuka)", "success");
-        }
+        // Tulis ke folder cache aplikasi (paling aman)
+        window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, function(dirEntry) {
+            dirEntry.getFile(fileName, { create: true, exclusive: false }, function(fileEntry) {
+                fileEntry.createWriter(function(fileWriter) {
+                    fileWriter.onwriteend = function() {
+                        // Setelah selesai ditulis → buka
+                        cordova.plugins.fileOpener2.open(
+                            fileEntry.nativeURL,
+                            'application/pdf',
+                            {
+                                error: function(e) {
+                                    console.error(e);
+                                    showAlert("PDF tersimpan tapi gagal dibuka", "warning");
+                                },
+                                success: function() {
+                                    showAlert("PDF berhasil dibuka!", "success");
+                                }
+                            }
+                        );
+                    };
+                    fileWriter.onerror = function(e) {
+                        console.error("Write error:", e);
+                        showAlert("Gagal menulis file PDF", "error");
+                    };
+                    fileWriter.write(pdfOutput);
+                }, function(err) {
+                    console.error(err);
+                    showAlert("Gagal create writer", "error");
+                });
+            }, function(err) {
+                console.error(err);
+                showAlert("Gagal create file", "error");
+            });
+        }, function(err) {
+            console.error(err);
+            showAlert("Gagal akses folder", "error");
+        });
 
     } catch (err) {
-        console.error("Error detail:", err);
-        showAlert("Gagal: " + (err.message || "Unknown error"), "error");
+        console.error(err);
+        showAlert("Gagal: " + (err.message || "Unknown"), "error");
     }
 }
