@@ -2309,133 +2309,47 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (FULL) ---
+// --- FUNGSI CETAK LAPORAN (LAYOUT MIRIP GAMBAR) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
-    if (!window.jspdf) {
-        showAlert("Library PDF belum siap", "error");
-        return;
-    }
+    // Sembunyikan elemen yang berat
+    const heavyElements = document.querySelectorAll('.no-print, canvas, .tabs, header');
+    heavyElements.forEach(el => el.style.visibility = 'hidden');
 
-    // Jika Cordova belum ready, tunggu
-    if (typeof cordova === 'undefined') {
-        document.addEventListener('deviceready', function() {
-            buatDanBukaPDF();
-        }, false);
+    // Ambil container utama yang berisi laporan
+    const element = document.querySelector('.print-container') || document.body;
 
-        setTimeout(function() {
-            if (typeof cordova === 'undefined') {
-                showAlert("Cordova belum siap. Tutup & buka ulang aplikasi.", "error");
-            }
-        }, 2500);
-        return;
-    }
+    const opt = {
+        margin:       [8, 8, 8, 8],
+        filename:     'Laporan_Keuangan_DKM.pdf',
+        image:        { type: 'jpeg', quality: 0.95 },
+        html2canvas:  { 
+            scale: 1.5,                 // tidak terlalu tinggi biar tidak crash
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            scrollY: 0,
+            windowWidth: 800
+        },
+        jsPDF:        { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait' 
+        },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
 
-    // Sudah siap
-    buatDanBukaPDF();
-}
-
-function buatDanBukaPDF() {
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-
-        const activeList = currentKasTab === "utama" 
-            ? filteredTransactionsGlobalUtama 
-            : filteredTransactionsGlobalKhusus;
-
-        const title = currentKasTab === "utama" 
-            ? "LAPORAN KEUANGAN KAS UTAMA" 
-            : `LAPORAN KAS KHUSUS: ${activeKhususCategory || ""}`;
-
-        // Header
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(settings.masjidName || "Masjid", 105, 15, { align: "center" });
-
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        doc.text(title, 105, 22, { align: "center" });
-
-        doc.setFontSize(9);
-        const today = new Date().toLocaleDateString('id-ID', { 
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    html2pdf().set(opt).from(element).save()
+        .then(() => {
+            // Kembalikan elemen yang disembunyikan
+            heavyElements.forEach(el => el.style.visibility = '');
+            showAlert("PDF berhasil dibuat!", "success");
+        })
+        .catch((err) => {
+            console.error(err);
+            heavyElements.forEach(el => el.style.visibility = '');
+            showAlert("Gagal membuat PDF. Coba lagi.", "error");
         });
-        doc.text(`Dicetak: ${today}`, 105, 28, { align: "center" });
-        doc.line(15, 32, 195, 32);
-
-        // Header tabel
-        let y = 40;
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.text("No", 15, y);
-        doc.text("Tanggal", 25, y);
-        doc.text("Kategori", 50, y);
-        doc.text("Keterangan", 90, y);
-        doc.text("Tipe", 150, y);
-        doc.text("Nominal", 170, y);
-        doc.line(15, y + 2, 195, y + 2);
-        y += 8;
-
-        // Isi data
-        doc.setFont("helvetica", "normal");
-        activeList.forEach((tx, idx) => {
-            if (y > 270) {
-                doc.addPage();
-                y = 20;
-            }
-
-            const tgl = new Date(tx.date).toLocaleDateString('id-ID', { 
-                day: '2-digit', month: 'short', year: 'numeric' 
-            });
-            const tipe = tx.type === "pemasukan" ? "Masuk" : "Keluar";
-            const nominal = (tx.type === "pemasukan" ? "+" : "-") + " " + formatRupiah(tx.amount);
-
-            doc.text(String(idx + 1), 15, y);
-            doc.text(tgl, 25, y);
-            doc.text((tx.category || "").substring(0, 18), 50, y);
-            doc.text((tx.desc || "").substring(0, 28), 90, y);
-            doc.text(tipe, 150, y);
-            doc.text(nominal, 170, y);
-            y += 7;
-        });
-
-        // Simpan & Buka PDF
-        const pdfOutput = doc.output('blob');
-        const fileName = "Laporan_Keuangan_DKM.pdf";
-
-        window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, function(dirEntry) {
-            dirEntry.getFile(fileName, { create: true, exclusive: false }, function(fileEntry) {
-                fileEntry.createWriter(function(fileWriter) {
-                    fileWriter.onwriteend = function() {
-                        cordova.plugins.fileOpener2.open(
-                            fileEntry.nativeURL,
-                            'application/pdf',
-                            {
-                                error: function(e) {
-                                    console.error(e);
-                                    showAlert("PDF tersimpan tapi gagal dibuka", "warning");
-                                },
-                                success: function() {
-                                    showAlert("PDF berhasil dibuka!", "success");
-                                }
-                            }
-                        );
-                    };
-                    fileWriter.onerror = function(e) {
-                        showAlert("Gagal menulis file PDF", "error");
-                    };
-                    fileWriter.write(pdfOutput);
-                });
-            });
-        }, function(err) {
-            showAlert("Gagal akses folder cache", "error");
-        });
-
-    } catch (err) {
-        console.error(err);
-        showAlert("Gagal: " + (err.message || "Unknown"), "error");
-    }
 }
 
