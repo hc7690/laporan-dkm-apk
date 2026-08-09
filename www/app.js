@@ -2309,47 +2309,182 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (LAYOUT MIRIP GAMBAR) ---
+// --- FUNGSI CETAK LAPORAN (jsPDF LEBIH LENGKAP) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
-    // Sembunyikan elemen yang berat
-    const heavyElements = document.querySelectorAll('.no-print, canvas, .tabs, header');
-    heavyElements.forEach(el => el.style.visibility = 'hidden');
+    if (!window.jspdf) {
+        showAlert("Library PDF belum siap", "error");
+        return;
+    }
 
-    // Ambil container utama yang berisi laporan
-    const element = document.querySelector('.print-container') || document.body;
+    if (typeof cordova === 'undefined') {
+        document.addEventListener('deviceready', function() {
+            buatDanBukaPDF();
+        }, false);
+        setTimeout(function() {
+            if (typeof cordova === 'undefined') {
+                showAlert("Cordova belum siap. Tutup & buka ulang aplikasi.", "error");
+            }
+        }, 2500);
+        return;
+    }
 
-    const opt = {
-        margin:       [8, 8, 8, 8],
-        filename:     'Laporan_Keuangan_DKM.pdf',
-        image:        { type: 'jpeg', quality: 0.95 },
-        html2canvas:  { 
-            scale: 1.5,                 // tidak terlalu tinggi biar tidak crash
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            scrollY: 0,
-            windowWidth: 800
-        },
-        jsPDF:        { 
-            unit: 'mm', 
-            format: 'a4', 
-            orientation: 'portrait' 
-        },
-        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+    buatDanBukaPDF();
+}
 
-    html2pdf().set(opt).from(element).save()
-        .then(() => {
-            // Kembalikan elemen yang disembunyikan
-            heavyElements.forEach(el => el.style.visibility = '');
-            showAlert("PDF berhasil dibuat!", "success");
-        })
-        .catch((err) => {
-            console.error(err);
-            heavyElements.forEach(el => el.style.visibility = '');
-            showAlert("Gagal membuat PDF. Coba lagi.", "error");
+function buatDanBukaPDF() {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+
+        const activeList = currentKasTab === "utama" 
+            ? filteredTransactionsGlobalUtama 
+            : filteredTransactionsGlobalKhusus;
+
+        // Hitung total
+        let totalMasuk = 0;
+        let totalKeluar = 0;
+        activeList.forEach(tx => {
+            if (tx.type === "pemasukan") totalMasuk += tx.amount;
+            else totalKeluar += tx.amount;
         });
+        const saldo = totalMasuk - totalKeluar;
+
+        const title = currentKasTab === "utama" 
+            ? "LAPORAN KEUANGAN KAS UTAMA MASJID" 
+            : `LAPORAN KAS KHUSUS: ${activeKhususCategory || ""}`;
+
+        // ===== HEADER =====
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.text(settings.masjidName || "Masjid", 105, 14, { align: "center" });
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        if (settings.address) {
+            doc.text(settings.address, 105, 19, { align: "center" });
+        }
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text(title, 105, 26, { align: "center" });
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        const today = new Date().toLocaleDateString('id-ID', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        });
+        doc.text(`Dicetak pada: ${today}`, 105, 31, { align: "center" });
+
+        doc.setLineWidth(0.6);
+        doc.line(14, 34, 196, 34);
+
+        // ===== RINGKASAN =====
+        let y = 42;
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text("RINGKASAN KEUANGAN", 14, y);
+        y += 6;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.text(`Total Pemasukan   : ${formatRupiah(totalMasuk)}`, 14, y);
+        doc.text(`Total Pengeluaran : ${formatRupiah(totalKeluar)}`, 105, y);
+        y += 5;
+        doc.setFont("helvetica", "bold");
+        doc.text(`Sisa Saldo        : ${formatRupiah(saldo)}`, 14, y);
+        y += 8;
+
+        doc.setLineWidth(0.3);
+        doc.line(14, y, 196, y);
+        y += 7;
+
+        // ===== TABEL =====
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.text("No", 14, y);
+        doc.text("Tanggal", 22, y);
+        doc.text("Kategori", 45, y);
+        doc.text("Keterangan", 85, y);
+        doc.text("Tipe", 145, y);
+        doc.text("Nominal", 165, y);
+        y += 2;
+        doc.line(14, y, 196, y);
+        y += 5;
+
+        doc.setFont("helvetica", "normal");
+        activeList.forEach((tx, idx) => {
+            if (y > 250) {
+                doc.addPage();
+                y = 20;
+            }
+
+            const tgl = new Date(tx.date).toLocaleDateString('id-ID', { 
+                day: '2-digit', month: 'short', year: 'numeric' 
+            });
+            const tipe = tx.type === "pemasukan" ? "MASUK" : "KELUAR";
+            const nominal = (tx.type === "pemasukan" ? "+" : "-") + " " + formatRupiah(tx.amount);
+
+            doc.text(String(idx + 1), 14, y);
+            doc.text(tgl, 22, y);
+            doc.text((tx.category || "").substring(0, 16), 45, y);
+            doc.text((tx.desc || "").substring(0, 28), 85, y);
+            doc.text(tipe, 145, y);
+            doc.text(nominal, 165, y);
+            y += 6;
+        });
+
+        // ===== TANDA TANGAN =====
+        y += 15;
+        if (y > 240) {
+            doc.addPage();
+            y = 30;
+        }
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${settings.city || "Bekasi"}, ${today}`, 140, y, { align: "center" });
+        y += 18;
+
+        // Kolom kiri - Bendahara
+        doc.text(settings.titleBendahara || "Bendahara DKM", 50, y, { align: "center" });
+        // Kolom kanan - Ketua
+        doc.text(settings.titleKetua || "Ketua DKM", 150, y, { align: "center" });
+        y += 22;
+
+        doc.text(settings.nameBendahara ? `( ${settings.nameBendahara} )` : "( .................... )", 50, y, { align: "center" });
+        doc.text(settings.nameKetua ? `( ${settings.nameKetua} )` : "( .................... )", 150, y, { align: "center" });
+
+        // ===== SIMPAN & BUKA =====
+        const pdfOutput = doc.output('blob');
+        const fileName = "Laporan_Keuangan_DKM.pdf";
+
+        window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, function(dirEntry) {
+            dirEntry.getFile(fileName, { create: true, exclusive: false }, function(fileEntry) {
+                fileEntry.createWriter(function(fileWriter) {
+                    fileWriter.onwriteend = function() {
+                        cordova.plugins.fileOpener2.open(
+                            fileEntry.nativeURL,
+                            'application/pdf',
+                            {
+                                error: function(e) {
+                                    showAlert("PDF tersimpan tapi gagal dibuka", "warning");
+                                },
+                                success: function() {
+                                    showAlert("PDF berhasil dibuka!", "success");
+                                }
+                            }
+                        );
+                    };
+                    fileWriter.write(pdfOutput);
+                });
+            });
+        });
+
+    } catch (err) {
+        console.error(err);
+        showAlert("Gagal: " + (err.message || "Unknown"), "error");
+    }
 }
 
