@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (FULL + PERIODE FILTER) ---
+// --- FUNGSI CETAK LAPORAN (FULL FINAL) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2440,7 +2440,7 @@ function buatDanBukaPDF() {
         doc.setLineWidth(0.6);
         doc.line(14, 38, 196, 38);
 
-        // ===== RINGKASAN =====
+        // ===== RINGKASAN (titik dua sejajar) =====
         let y = 46;
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
@@ -2449,41 +2449,86 @@ function buatDanBukaPDF() {
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.text(`Saldo Sebelumnya                 : ${formatRupiah(saldoSebelumnya)}`, 14, y);
+
+        // Label kiri, titik dua di posisi tetap, nilai di kanan
+        const labelX = 14;
+        const colonX = 78;
+        const valueX = 82;
+
+        doc.text("Saldo Sebelumnya", labelX, y);
+        doc.text(":", colonX, y);
+        doc.text(formatRupiah(saldoSebelumnya), valueX, y);
         y += 5;
-        doc.text(`Total Pemasukan Periode          : ${formatRupiah(totalMasuk)}`, 14, y);
+
+        doc.text("Total Pemasukan Periode", labelX, y);
+        doc.text(":", colonX, y);
+        doc.text(formatRupiah(totalMasuk), valueX, y);
         y += 5;
-        doc.text(`Total Pengeluaran Periode        : ${formatRupiah(totalKeluar)}`, 14, y);
+
+        doc.text("Total Pengeluaran Periode", labelX, y);
+        doc.text(":", colonX, y);
+        doc.text(formatRupiah(totalKeluar), valueX, y);
         y += 5;
-        doc.text(`Jumlah Perhitungan Periode       : ${formatRupiah(perhitunganPeriode)}`, 14, y);
+
+        doc.text("Jumlah Perhitungan Periode", labelX, y);
+        doc.text(":", colonX, y);
+        doc.text(formatRupiah(perhitunganPeriode), valueX, y);
         y += 5;
+
         doc.setFont("helvetica", "bold");
-        doc.text(`Saldo Saat Ini                   : ${formatRupiah(saldoSaatIni)}`, 14, y);
-        y += 8;
+        doc.text("Saldo Saat Ini", labelX, y);
+        doc.text(":", colonX, y);
+        doc.text(formatRupiah(saldoSaatIni), valueX, y);
+        y += 9;
 
         doc.setLineWidth(0.3);
         doc.line(14, y, 196, y);
-        y += 7;
+        y += 8;
 
-        // ===== TABEL =====
-        doc.setFillColor(240, 240, 240);
+        // ===== JUDUL TABEL =====
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text("DAFTAR RINCIAN TRANSAKSI KEUANGAN", 14, y);
+        y += 6;
+
+        // ===== TABEL DENGAN GARIS =====
+        const tableTop = y;
+        const col = {
+            no: 14,
+            tgl: 22,
+            kat: 45,
+            ket: 85,
+            tipe: 145,
+            nom: 165,
+            right: 196
+        };
+
+        // Header background
+        doc.setFillColor(230, 230, 230);
         doc.rect(14, y - 4, 182, 7, 'F');
 
+        // Header text
         doc.setFontSize(7.5);
         doc.setFont("helvetica", "bold");
-        doc.text("No", 16, y);
-        doc.text("Tanggal", 24, y);
-        doc.text("Kategori", 48, y);
-        doc.text("Keterangan", 88, y);
-        doc.text("Tipe", 148, y);
-        doc.text("Nominal", 168, y);
+        doc.setTextColor(0, 0, 0);
+        doc.text("No", col.no + 1, y);
+        doc.text("Tanggal", col.tgl, y);
+        doc.text("Kategori", col.kat, y);
+        doc.text("Keterangan", col.ket, y);
+        doc.text("Tipe", col.tipe, y);
+        doc.text("Nominal", col.nom, y);
         y += 3;
+
+        // Garis bawah header
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
         doc.line(14, y, 196, y);
         y += 5;
 
+        // Isi tabel
         doc.setFont("helvetica", "normal");
         activeList.forEach((tx, idx) => {
-            if (y > 240) {
+            if (y > 245) {
                 doc.addPage();
                 y = 20;
             }
@@ -2491,17 +2536,37 @@ function buatDanBukaPDF() {
             const tgl = new Date(tx.date).toLocaleDateString('id-ID', { 
                 day: '2-digit', month: 'short', year: 'numeric' 
             });
-            const tipe = tx.type === "pemasukan" ? "MASUK" : "KELUAR";
-            const nominal = (tx.type === "pemasukan" ? "+" : "-") + " " + formatRupiah(tx.amount);
+            const isMasuk = tx.type === "pemasukan";
+            const tipe = isMasuk ? "MASUK" : "KELUAR";
+            const nominal = (isMasuk ? "+" : "-") + " " + formatRupiah(tx.amount);
 
-            doc.text(String(idx + 1), 16, y);
-            doc.text(tgl, 24, y);
-            doc.text((tx.category || "").substring(0, 16), 48, y);
-            doc.text((tx.desc || "").substring(0, 28), 88, y);
-            doc.text(tipe, 148, y);
-            doc.text(nominal, 168, y);
+            doc.setTextColor(0, 0, 0);
+            doc.text(String(idx + 1), col.no + 1, y);
+            doc.text(tgl, col.tgl, y);
+            doc.text((tx.category || "").substring(0, 16), col.kat, y);
+            doc.text((tx.desc || "").substring(0, 28), col.ket, y);
+
+            // Warna tipe & nominal
+            if (isMasuk) {
+                doc.setTextColor(0, 128, 0); // hijau
+            } else {
+                doc.setTextColor(200, 0, 0); // merah
+            }
+            doc.text(tipe, col.tipe, y);
+            doc.text(nominal, col.nom, y);
+
             y += 6;
+
+            // Garis tipis antar baris
+            doc.setDrawColor(200);
+            doc.setLineWidth(0.1);
+            doc.line(14, y - 2, 196, y - 2);
         });
+
+        // Garis bawah tabel
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
+        doc.line(14, y - 2, 196, y - 2);
 
         // ===== TANDA TANGAN =====
         y += 12;
@@ -2510,6 +2575,7 @@ function buatDanBukaPDF() {
             y = 30;
         }
 
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.text(`${settings.city || "Bekasi"}, ${today}`, 150, y, { align: "center" });
@@ -2535,7 +2601,7 @@ function buatDanBukaPDF() {
             }
         }
 
-        // Stempel di samping kanan tanda tangan Ketua (sedikit menimpa)
+        // Stempel di samping kanan tanda tangan Ketua
         if (settings.stamp) {
             try {
                 doc.addImage(settings.stamp, 'PNG', 155, signY - 2, 28, 28);
