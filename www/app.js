@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (FULL FINAL) ---
+// --- FUNGSI CETAK LAPORAN (FULL FINAL + PERBAIKAN) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2440,47 +2440,64 @@ function buatDanBukaPDF() {
         doc.setLineWidth(0.6);
         doc.line(14, 38, 196, 38);
 
-        // ===== RINGKASAN (titik dua sejajar) =====
+        // ===== RINGKASAN =====
         let y = 46;
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
         doc.text("RINGKASAN KEUANGAN", 14, y);
         y += 7;
 
         doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-
-        // Label kiri, titik dua di posisi tetap, nilai di kanan
         const labelX = 14;
         const colonX = 78;
         const valueX = 82;
 
+        // Saldo Sebelumnya
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
         doc.text("Saldo Sebelumnya", labelX, y);
         doc.text(":", colonX, y);
         doc.text(formatRupiah(saldoSebelumnya), valueX, y);
         y += 5;
 
+        // Total Pemasukan Periode (Hijau)
+        doc.setTextColor(0, 0, 0);
         doc.text("Total Pemasukan Periode", labelX, y);
         doc.text(":", colonX, y);
+        doc.setTextColor(0, 128, 0);
         doc.text(formatRupiah(totalMasuk), valueX, y);
         y += 5;
 
+        // Total Pengeluaran Periode (Merah)
+        doc.setTextColor(0, 0, 0);
         doc.text("Total Pengeluaran Periode", labelX, y);
         doc.text(":", colonX, y);
+        doc.setTextColor(200, 0, 0);
         doc.text(formatRupiah(totalKeluar), valueX, y);
         y += 5;
 
+        // Jumlah Perhitungan Periode (Hijau / Merah)
+        doc.setTextColor(0, 0, 0);
         doc.text("Jumlah Perhitungan Periode", labelX, y);
         doc.text(":", colonX, y);
+        if (perhitunganPeriode < 0) {
+            doc.setTextColor(200, 0, 0);
+        } else {
+            doc.setTextColor(0, 128, 0);
+        }
         doc.text(formatRupiah(perhitunganPeriode), valueX, y);
         y += 5;
 
+        // Saldo Saat Ini
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
         doc.text("Saldo Saat Ini", labelX, y);
         doc.text(":", colonX, y);
         doc.text(formatRupiah(saldoSaatIni), valueX, y);
         y += 9;
 
+        doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.line(14, y, 196, y);
         y += 8;
@@ -2488,40 +2505,39 @@ function buatDanBukaPDF() {
         // ===== JUDUL TABEL =====
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
         doc.text("DAFTAR RINCIAN TRANSAKSI KEUANGAN", 14, y);
-        y += 6;
+        y += 7;
 
-        // ===== TABEL DENGAN GARIS =====
-        const tableTop = y;
+        // ===== TABEL =====
         const col = {
-            no: 14,
-            tgl: 22,
-            kat: 45,
-            ket: 85,
-            tipe: 145,
-            nom: 165,
-            right: 196
+            no: 15,
+            tgl: 24,
+            kat: 48,
+            ket: 88,
+            tipe: 148,
+            nom: 168
         };
 
         // Header background
         doc.setFillColor(230, 230, 230);
-        doc.rect(14, y - 4, 182, 7, 'F');
+        doc.rect(14, y - 4.5, 182, 7, 'F');
 
         // Header text
         doc.setFontSize(7.5);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 0, 0);
-        doc.text("No", col.no + 1, y);
+        doc.text("No", col.no, y);
         doc.text("Tanggal", col.tgl, y);
         doc.text("Kategori", col.kat, y);
         doc.text("Keterangan", col.ket, y);
         doc.text("Tipe", col.tipe, y);
         doc.text("Nominal", col.nom, y);
-        y += 3;
 
         // Garis bawah header
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.3);
+        y += 3;
+        doc.setDrawColor(80);
+        doc.setLineWidth(0.4);
         doc.line(14, y, 196, y);
         y += 5;
 
@@ -2540,33 +2556,34 @@ function buatDanBukaPDF() {
             const tipe = isMasuk ? "MASUK" : "KELUAR";
             const nominal = (isMasuk ? "+" : "-") + " " + formatRupiah(tx.amount);
 
+            // Teks biasa
             doc.setTextColor(0, 0, 0);
-            doc.text(String(idx + 1), col.no + 1, y);
+            doc.text(String(idx + 1), col.no, y);
             doc.text(tgl, col.tgl, y);
             doc.text((tx.category || "").substring(0, 16), col.kat, y);
             doc.text((tx.desc || "").substring(0, 28), col.ket, y);
 
             // Warna tipe & nominal
             if (isMasuk) {
-                doc.setTextColor(0, 128, 0); // hijau
+                doc.setTextColor(0, 128, 0);
             } else {
-                doc.setTextColor(200, 0, 0); // merah
+                doc.setTextColor(200, 0, 0);
             }
             doc.text(tipe, col.tipe, y);
             doc.text(nominal, col.nom, y);
 
-            y += 6;
+            y += 6.5;
 
-            // Garis tipis antar baris
-            doc.setDrawColor(200);
-            doc.setLineWidth(0.1);
-            doc.line(14, y - 2, 196, y - 2);
+            // Garis tipis antar baris (tidak nabrak tulisan)
+            doc.setDrawColor(210);
+            doc.setLineWidth(0.15);
+            doc.line(14, y - 2.2, 196, y - 2.2);
         });
 
         // Garis bawah tabel
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.3);
-        doc.line(14, y - 2, 196, y - 2);
+        doc.setDrawColor(80);
+        doc.setLineWidth(0.4);
+        doc.line(14, y - 2.2, 196, y - 2.2);
 
         // ===== TANDA TANGAN =====
         y += 12;
@@ -2583,7 +2600,6 @@ function buatDanBukaPDF() {
 
         const signY = y + 3;
 
-        // Tanda tangan Bendahara (kiri)
         if (settings.signBendahara) {
             try {
                 doc.addImage(settings.signBendahara, 'PNG', 35, signY, 32, 16);
@@ -2592,7 +2608,6 @@ function buatDanBukaPDF() {
             }
         }
 
-        // Tanda tangan Ketua (kanan)
         if (settings.signKetua) {
             try {
                 doc.addImage(settings.signKetua, 'PNG', 138, signY, 32, 16);
@@ -2601,7 +2616,6 @@ function buatDanBukaPDF() {
             }
         }
 
-        // Stempel di samping kanan tanda tangan Ketua
         if (settings.stamp) {
             try {
                 doc.addImage(settings.stamp, 'PNG', 155, signY - 2, 28, 28);
@@ -2649,3 +2663,4 @@ function buatDanBukaPDF() {
         showAlert("Gagal: " + (err.message || "Unknown"), "error");
     }
 }
+
