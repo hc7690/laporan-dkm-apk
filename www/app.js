@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (jsPDF LEBIH LENGKAP) ---
+// --- FUNGSI CETAK LAPORAN (LEBIH LENGKAP) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2349,18 +2349,36 @@ function buatDanBukaPDF() {
             if (tx.type === "pemasukan") totalMasuk += tx.amount;
             else totalKeluar += tx.amount;
         });
-        const saldo = totalMasuk - totalKeluar;
+        const selisih = totalMasuk - totalKeluar;
+
+        // Saldo saat ini (dari kartu)
+        let saldoSaatIni = 0;
+        if (currentKasTab === "utama") {
+            const el = document.getElementById("cardSaldoUtama");
+            if (el) saldoSaatIni = parseInt(el.innerText.replace(/[^\d-]/g, '')) || 0;
+        } else {
+            const el = document.getElementById("cardSaldoKhusus");
+            if (el) saldoSaatIni = parseInt(el.innerText.replace(/[^\d-]/g, '')) || 0;
+        }
 
         const title = currentKasTab === "utama" 
             ? "LAPORAN KEUANGAN KAS UTAMA MASJID" 
             : `LAPORAN KAS KHUSUS: ${activeKhususCategory || ""}`;
+
+        // ===== LOGO (jika ada) =====
+        let startY = 12;
+        if (settings.logo) {
+            try {
+                doc.addImage(settings.logo, 'JPEG', 14, 8, 18, 18);
+            } catch(e) {}
+        }
 
         // ===== HEADER =====
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
         doc.text(settings.masjidName || "Masjid", 105, 14, { align: "center" });
 
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         if (settings.address) {
             doc.text(settings.address, 105, 19, { align: "center" });
@@ -2385,15 +2403,18 @@ function buatDanBukaPDF() {
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
         doc.text("RINGKASAN KEUANGAN", 14, y);
-        y += 6;
+        y += 7;
 
-        doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
-        doc.text(`Total Pemasukan   : ${formatRupiah(totalMasuk)}`, 14, y);
-        doc.text(`Total Pengeluaran : ${formatRupiah(totalKeluar)}`, 105, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Saldo Saat Ini                  : ${formatRupiah(saldoSaatIni)}`, 14, y);
+        y += 5;
+        doc.text(`Total Pemasukan (periode ini)   : ${formatRupiah(totalMasuk)}`, 14, y);
+        y += 5;
+        doc.text(`Total Pengeluaran (periode ini) : ${formatRupiah(totalKeluar)}`, 14, y);
         y += 5;
         doc.setFont("helvetica", "bold");
-        doc.text(`Sisa Saldo        : ${formatRupiah(saldo)}`, 14, y);
+        doc.text(`Pemasukan dikurangi Pengeluaran : ${formatRupiah(selisih)}`, 14, y);
         y += 8;
 
         doc.setLineWidth(0.3);
@@ -2401,21 +2422,27 @@ function buatDanBukaPDF() {
         y += 7;
 
         // ===== TABEL =====
-        doc.setFontSize(8);
+        // Header tabel
+        doc.setFillColor(240, 240, 240);
+        doc.rect(14, y - 4, 182, 7, 'F');
+
+        doc.setFontSize(7.5);
         doc.setFont("helvetica", "bold");
-        doc.text("No", 14, y);
-        doc.text("Tanggal", 22, y);
-        doc.text("Kategori", 45, y);
-        doc.text("Keterangan", 85, y);
-        doc.text("Tipe", 145, y);
-        doc.text("Nominal", 165, y);
-        y += 2;
+        doc.text("No", 16, y);
+        doc.text("Tanggal", 24, y);
+        doc.text("Kategori", 48, y);
+        doc.text("Keterangan", 88, y);
+        doc.text("Tipe", 148, y);
+        doc.text("Nominal", 168, y);
+        y += 3;
+        doc.setLineWidth(0.3);
         doc.line(14, y, 196, y);
         y += 5;
 
+        // Isi tabel
         doc.setFont("helvetica", "normal");
         activeList.forEach((tx, idx) => {
-            if (y > 250) {
+            if (y > 245) {
                 doc.addPage();
                 y = 20;
             }
@@ -2426,35 +2453,58 @@ function buatDanBukaPDF() {
             const tipe = tx.type === "pemasukan" ? "MASUK" : "KELUAR";
             const nominal = (tx.type === "pemasukan" ? "+" : "-") + " " + formatRupiah(tx.amount);
 
-            doc.text(String(idx + 1), 14, y);
-            doc.text(tgl, 22, y);
-            doc.text((tx.category || "").substring(0, 16), 45, y);
-            doc.text((tx.desc || "").substring(0, 28), 85, y);
-            doc.text(tipe, 145, y);
-            doc.text(nominal, 165, y);
+            doc.text(String(idx + 1), 16, y);
+            doc.text(tgl, 24, y);
+            doc.text((tx.category || "").substring(0, 16), 48, y);
+            doc.text((tx.desc || "").substring(0, 28), 88, y);
+            doc.text(tipe, 148, y);
+            doc.text(nominal, 168, y);
             y += 6;
         });
 
         // ===== TANDA TANGAN =====
-        y += 15;
-        if (y > 240) {
+        y += 12;
+        if (y > 230) {
             doc.addPage();
             y = 30;
         }
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.text(`${settings.city || "Bekasi"}, ${today}`, 140, y, { align: "center" });
-        y += 18;
+        doc.text(`${settings.city || "Bekasi"}, ${today}`, 150, y, { align: "center" });
+        y += 8;
 
-        // Kolom kiri - Bendahara
+        // Gambar tanda tangan & stempel (jika ada)
+        const signY = y + 5;
+
+        // Stempel di tengah (jika ada)
+        if (settings.stamp) {
+            try {
+                doc.addImage(settings.stamp, 'JPEG', 88, signY, 25, 25);
+            } catch(e) {}
+        }
+
+        // Tanda tangan Bendahara (kiri)
+        if (settings.signBendahara) {
+            try {
+                doc.addImage(settings.signBendahara, 'JPEG', 35, signY, 30, 15);
+            } catch(e) {}
+        }
+
+        // Tanda tangan Ketua (kanan)
+        if (settings.signKetua) {
+            try {
+                doc.addImage(settings.signKetua, 'JPEG', 140, signY, 30, 15);
+            } catch(e) {}
+        }
+
+        y = signY + 28;
+
         doc.text(settings.titleBendahara || "Bendahara DKM", 50, y, { align: "center" });
-        // Kolom kanan - Ketua
-        doc.text(settings.titleKetua || "Ketua DKM", 150, y, { align: "center" });
-        y += 22;
-
+        doc.text(settings.titleKetua || "Ketua DKM", 155, y, { align: "center" });
+        y += 5;
         doc.text(settings.nameBendahara ? `( ${settings.nameBendahara} )` : "( .................... )", 50, y, { align: "center" });
-        doc.text(settings.nameKetua ? `( ${settings.nameKetua} )` : "( .................... )", 150, y, { align: "center" });
+        doc.text(settings.nameKetua ? `( ${settings.nameKetua} )` : "( .................... )", 155, y, { align: "center" });
 
         // ===== SIMPAN & BUKA =====
         const pdfOutput = doc.output('blob');
