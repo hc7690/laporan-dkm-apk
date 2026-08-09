@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (LEBIH LENGKAP) ---
+// --- FUNGSI CETAK LAPORAN (VERSI FINAL) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2342,16 +2342,16 @@ function buatDanBukaPDF() {
             ? filteredTransactionsGlobalUtama 
             : filteredTransactionsGlobalKhusus;
 
-        // Hitung total
+        // Hitung total periode
         let totalMasuk = 0;
         let totalKeluar = 0;
         activeList.forEach(tx => {
             if (tx.type === "pemasukan") totalMasuk += tx.amount;
             else totalKeluar += tx.amount;
         });
-        const selisih = totalMasuk - totalKeluar;
+        const perhitunganPeriode = totalMasuk - totalKeluar;
 
-        // Saldo saat ini (dari kartu)
+        // Saldo Saat Ini
         let saldoSaatIni = 0;
         if (currentKasTab === "utama") {
             const el = document.getElementById("cardSaldoUtama");
@@ -2361,12 +2361,23 @@ function buatDanBukaPDF() {
             if (el) saldoSaatIni = parseInt(el.innerText.replace(/[^\d-]/g, '')) || 0;
         }
 
+        // Saldo Sebelumnya
+        const saldoSebelumnya = saldoSaatIni - perhitunganPeriode;
+
+        // Periode tanggal
+        let periodeText = "Semua Transaksi";
+        if (activeList.length > 0) {
+            const dates = activeList.map(tx => new Date(tx.date)).sort((a,b) => a - b);
+            const start = dates[0].toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            const end = dates[dates.length-1].toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            periodeText = `${start} s/d ${end}`;
+        }
+
         const title = currentKasTab === "utama" 
             ? "LAPORAN KEUANGAN KAS UTAMA MASJID" 
             : `LAPORAN KAS KHUSUS: ${activeKhususCategory || ""}`;
 
-        // ===== LOGO (jika ada) =====
-        let startY = 12;
+        // ===== LOGO =====
         if (settings.logo) {
             try {
                 doc.addImage(settings.logo, 'JPEG', 14, 8, 18, 18);
@@ -2390,16 +2401,18 @@ function buatDanBukaPDF() {
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
+        doc.text(`Periode: ${periodeText}`, 105, 31, { align: "center" });
+
         const today = new Date().toLocaleDateString('id-ID', { 
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         });
-        doc.text(`Dicetak pada: ${today}`, 105, 31, { align: "center" });
+        doc.text(`Dicetak pada: ${today}`, 105, 35, { align: "center" });
 
         doc.setLineWidth(0.6);
-        doc.line(14, 34, 196, 34);
+        doc.line(14, 38, 196, 38);
 
         // ===== RINGKASAN =====
-        let y = 42;
+        let y = 46;
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
         doc.text("RINGKASAN KEUANGAN", 14, y);
@@ -2407,14 +2420,16 @@ function buatDanBukaPDF() {
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.text(`Saldo Saat Ini                  : ${formatRupiah(saldoSaatIni)}`, 14, y);
+        doc.text(`Saldo Sebelumnya                 : ${formatRupiah(saldoSebelumnya)}`, 14, y);
         y += 5;
-        doc.text(`Total Pemasukan (periode ini)   : ${formatRupiah(totalMasuk)}`, 14, y);
+        doc.text(`Total Pemasukan Periode          : ${formatRupiah(totalMasuk)}`, 14, y);
         y += 5;
-        doc.text(`Total Pengeluaran (periode ini) : ${formatRupiah(totalKeluar)}`, 14, y);
+        doc.text(`Total Pengeluaran Periode        : ${formatRupiah(totalKeluar)}`, 14, y);
+        y += 5;
+        doc.text(`Jumlah Perhitungan Periode       : ${formatRupiah(perhitunganPeriode)}`, 14, y);
         y += 5;
         doc.setFont("helvetica", "bold");
-        doc.text(`Pemasukan dikurangi Pengeluaran : ${formatRupiah(selisih)}`, 14, y);
+        doc.text(`Saldo Saat Ini                   : ${formatRupiah(saldoSaatIni)}`, 14, y);
         y += 8;
 
         doc.setLineWidth(0.3);
@@ -2422,7 +2437,6 @@ function buatDanBukaPDF() {
         y += 7;
 
         // ===== TABEL =====
-        // Header tabel
         doc.setFillColor(240, 240, 240);
         doc.rect(14, y - 4, 182, 7, 'F');
 
@@ -2435,14 +2449,12 @@ function buatDanBukaPDF() {
         doc.text("Tipe", 148, y);
         doc.text("Nominal", 168, y);
         y += 3;
-        doc.setLineWidth(0.3);
         doc.line(14, y, 196, y);
         y += 5;
 
-        // Isi tabel
         doc.setFont("helvetica", "normal");
         activeList.forEach((tx, idx) => {
-            if (y > 245) {
+            if (y > 240) {
                 doc.addPage();
                 y = 20;
             }
@@ -2464,7 +2476,7 @@ function buatDanBukaPDF() {
 
         // ===== TANDA TANGAN =====
         y += 12;
-        if (y > 230) {
+        if (y > 220) {
             doc.addPage();
             y = 30;
         }
@@ -2474,27 +2486,26 @@ function buatDanBukaPDF() {
         doc.text(`${settings.city || "Bekasi"}, ${today}`, 150, y, { align: "center" });
         y += 8;
 
-        // Gambar tanda tangan & stempel (jika ada)
-        const signY = y + 5;
-
-        // Stempel di tengah (jika ada)
-        if (settings.stamp) {
-            try {
-                doc.addImage(settings.stamp, 'JPEG', 88, signY, 25, 25);
-            } catch(e) {}
-        }
+        const signY = y + 3;
 
         // Tanda tangan Bendahara (kiri)
         if (settings.signBendahara) {
             try {
-                doc.addImage(settings.signBendahara, 'JPEG', 35, signY, 30, 15);
+                doc.addImage(settings.signBendahara, 'JPEG', 35, signY, 32, 16);
             } catch(e) {}
         }
 
         // Tanda tangan Ketua (kanan)
         if (settings.signKetua) {
             try {
-                doc.addImage(settings.signKetua, 'JPEG', 140, signY, 30, 15);
+                doc.addImage(settings.signKetua, 'JPEG', 138, signY, 32, 16);
+            } catch(e) {}
+        }
+
+        // Stempel di samping kanan tanda tangan Ketua (sedikit menimpa)
+        if (settings.stamp) {
+            try {
+                doc.addImage(settings.stamp, 'JPEG', 155, signY - 2, 28, 28);
             } catch(e) {}
         }
 
