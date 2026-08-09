@@ -60,47 +60,47 @@
 <body class="bg-base-200 min-h-screen text-base-content antialiased">
 
     <!-- HEADER & NAVBAR (No-Print) -->
-    <header class="navbar bg-primary text-primary-content shadow-lg px-4 md:px-8 no-print">
-        <div class="flex-1 gap-2 items-center">
-            <div class="p-2 bg-primary-focus rounded-xl">
-                <i data-lucide="home" class="w-8 h-8 text-white"></i>
-            </div>
-            <div>
-                <h1 class="text-lg md:text-xl font-bold tracking-tight" id="navMasjidName">Masjid Al-Falah</h1>
-                <div class="flex items-center gap-1.5 mt-0.5">
-                    <p class="text-xs opacity-80">Sistem Laporan Keuangan DKM</p>
-                    <span id="badgeDbMode" class="badge badge-ghost text-[9px] font-bold px-1.5 py-1 border-0 uppercase bg-black/20 text-white">Offline</span>
-                </div>
+<header class="navbar bg-primary text-primary-content shadow-lg px-3 py-2 no-print">
+    <!-- Kiri: Logo + Nama -->
+    <div class="flex-1 gap-2 items-center min-w-0">
+        <div class="p-1.5 bg-primary-focus rounded-lg shrink-0">
+            <i data-lucide="home" class="w-6 h-6 text-white"></i>
+        </div>
+        <div class="min-w-0">
+            <h1 class="text-sm font-bold tracking-tight truncate" id="navMasjidName">Masjid Al-Falah</h1>
+            <div class="flex items-center gap-1 mt-0.5">
+                <p class="text-[10px] opacity-80 truncate">Sistem Laporan Keuangan DKM</p>
+                <span id="badgeDbMode" class="badge badge-ghost text-[8px] font-bold px-1.5 py-0.5 border-0 uppercase bg-black/20 text-white shrink-0">Offline</span>
             </div>
         </div>
-        <div class="flex-none gap-1.5 md:gap-2">
-            <!-- Admin Session Info -->
-            <div id="adminSessionContainer" class="hidden items-center gap-2">
-                <span class="badge badge-accent text-[10px] font-extrabold px-2.5 py-3 border-0 rounded-md text-slate-800 shadow-sm flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                    MODE ADMIN
-                </span>
-                <button onclick="handleLogout()" class="btn btn-ghost btn-sm text-red-100 hover:bg-red-500/15 font-bold text-xs" title="Keluar dari Admin">
-                    <i data-lucide="log-out" class="w-4 h-4 mr-1"></i> Keluar
-                </button>
-            </div>
+    </div>
 
-            <!-- Login Admin Button -->
-            <button id="btnLoginAdmin" onclick="openLoginModal()" class="btn btn-ghost text-white font-bold text-xs hover:bg-white/10" title="Login sebagai Admin">
-                <i data-lucide="key" class="w-4 h-4 mr-1.5"></i> Login Admin
-            </button>
-
-            <!-- Settings Button (Admin Only) -->
-            <button id="btnHeaderSettings" onclick="openSettingsModal()" class="btn btn-ghost btn-circle admin-only hidden" title="Pengaturan">
-                <i data-lucide="settings" class="w-5 h-5"></i>
-            </button>
-            <!-- Backup/Restore Button (Admin Only) -->
-            <button id="btnHeaderBackup" onclick="openBackupModal()" class="btn btn-ghost btn-circle admin-only hidden" title="Ekspor/Impor Data">
-                <i data-lucide="database" class="w-5 h-5"></i>
+    <!-- Kanan: Tombol -->
+    <div class="flex-none flex items-center gap-1">
+        <!-- Mode Admin (hanya muncul saat login) -->
+        <div id="adminSessionContainer" class="hidden items-center gap-1">
+            <span class="badge badge-accent text-[9px] font-extrabold px-2 py-1.5 border-0 rounded-md text-slate-800 shadow-sm">
+                ADMIN
+            </span>
+            <button onclick="handleLogout()" class="btn btn-ghost btn-xs text-red-100 hover:bg-red-500/20 px-1.5" title="Keluar">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
             </button>
         </div>
-    </header>
 
+        <!-- Login Admin (hanya muncul saat belum login) -->
+        <button id="btnLoginAdmin" onclick="openLoginModal()" class="btn btn-ghost btn-xs text-white font-bold hover:bg-white/10 px-2" title="Login Admin">
+            <i data-lucide="key" class="w-3.5 h-3.5"></i>
+        </button>
+
+        <!-- Settings & Backup (Admin Only) -->
+        <button id="btnHeaderSettings" onclick="openSettingsModal()" class="btn btn-ghost btn-xs btn-circle admin-only hidden" title="Pengaturan">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+        <button id="btnHeaderBackup" onclick="openBackupModal()" class="btn btn-ghost btn-xs btn-circle admin-only hidden" title="Backup Data">
+            <i data-lucide="database" class="w-4 h-4"></i>
+        </button>
+    </div>
+</header>
     <!-- PRINT HEADER (Only visible during printing) -->
     <div class="hidden print-only border-b-4 border-double border-black pb-4 mb-6">
         <div class="flex items-center justify-center gap-6">
