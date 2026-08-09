@@ -2309,7 +2309,7 @@ window.addEventListener("afterprint", () => {
 });
 
 
-// --- FUNGSI CETAK LAPORAN (VERSI FINAL) ---
+// --- FUNGSI CETAK LAPORAN (FULL + PERIODE FILTER) ---
 function cetakLaporan() {
     showAlert("Sedang membuat PDF...", "info");
 
@@ -2364,9 +2364,36 @@ function buatDanBukaPDF() {
         // Saldo Sebelumnya
         const saldoSebelumnya = saldoSaatIni - perhitunganPeriode;
 
-        // Periode tanggal
+        // ===== PERIODE SESUAI FILTER =====
         let periodeText = "Semua Transaksi";
-        if (activeList.length > 0) {
+        
+        const isUtama = currentKasTab === "utama";
+        const startInput = document.getElementById(isUtama ? "filterStartDateUtama" : "filterStartDateKhusus");
+        const endInput   = document.getElementById(isUtama ? "filterEndDateUtama" : "filterEndDateKhusus");
+        const monthSelect = document.getElementById(isUtama ? "filterMonthUtama" : "filterMonthKhusus");
+        const yearSelect  = document.getElementById(isUtama ? "filterYearUtama" : "filterYearKhusus");
+
+        const startVal = startInput ? startInput.value : "";
+        const endVal   = endInput ? endInput.value : "";
+        const monthVal = monthSelect ? monthSelect.value : "";
+        const yearVal  = yearSelect ? yearSelect.value : "";
+
+        if (startVal && endVal) {
+            const start = new Date(startVal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            const end   = new Date(endVal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            periodeText = `${start} s/d ${end}`;
+        } else if (startVal) {
+            const start = new Date(startVal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            periodeText = `Dari ${start}`;
+        } else if (endVal) {
+            const end = new Date(endVal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            periodeText = `Sampai ${end}`;
+        } else if (monthVal && yearVal) {
+            const bulanNama = monthSelect.options[monthSelect.selectedIndex].text;
+            periodeText = `${bulanNama} ${yearVal}`;
+        } else if (yearVal) {
+            periodeText = `Tahun ${yearVal}`;
+        } else if (activeList.length > 0) {
             const dates = activeList.map(tx => new Date(tx.date)).sort((a,b) => a - b);
             const start = dates[0].toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
             const end = dates[dates.length-1].toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -2380,8 +2407,10 @@ function buatDanBukaPDF() {
         // ===== LOGO =====
         if (settings.logo) {
             try {
-                doc.addImage(settings.logo, 'JPEG', 14, 8, 18, 18);
-            } catch(e) {}
+                doc.addImage(settings.logo, 'PNG', 14, 8, 18, 18);
+            } catch(e) {
+                try { doc.addImage(settings.logo, 'JPEG', 14, 8, 18, 18); } catch(e2) {}
+            }
         }
 
         // ===== HEADER =====
@@ -2491,22 +2520,28 @@ function buatDanBukaPDF() {
         // Tanda tangan Bendahara (kiri)
         if (settings.signBendahara) {
             try {
-                doc.addImage(settings.signBendahara, 'JPEG', 35, signY, 32, 16);
-            } catch(e) {}
+                doc.addImage(settings.signBendahara, 'PNG', 35, signY, 32, 16);
+            } catch(e) {
+                try { doc.addImage(settings.signBendahara, 'JPEG', 35, signY, 32, 16); } catch(e2) {}
+            }
         }
 
         // Tanda tangan Ketua (kanan)
         if (settings.signKetua) {
             try {
-                doc.addImage(settings.signKetua, 'JPEG', 138, signY, 32, 16);
-            } catch(e) {}
+                doc.addImage(settings.signKetua, 'PNG', 138, signY, 32, 16);
+            } catch(e) {
+                try { doc.addImage(settings.signKetua, 'JPEG', 138, signY, 32, 16); } catch(e2) {}
+            }
         }
 
         // Stempel di samping kanan tanda tangan Ketua (sedikit menimpa)
         if (settings.stamp) {
             try {
-                doc.addImage(settings.stamp, 'JPEG', 155, signY - 2, 28, 28);
-            } catch(e) {}
+                doc.addImage(settings.stamp, 'PNG', 155, signY - 2, 28, 28);
+            } catch(e) {
+                try { doc.addImage(settings.stamp, 'JPEG', 155, signY - 2, 28, 28); } catch(e2) {}
+            }
         }
 
         y = signY + 28;
@@ -2548,4 +2583,3 @@ function buatDanBukaPDF() {
         showAlert("Gagal: " + (err.message || "Unknown"), "error");
     }
 }
-
